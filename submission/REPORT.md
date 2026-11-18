@@ -1,10 +1,9 @@
-# Báo cáo Day 09 — <Họ và tên>, 2A202603227
+# Báo cáo Day 09 — Doãn Tùng Lâm, 2A202603227
 
-> Các mục 1, 2, 3, 4(a), 5 được điền từ số liệu thật trong `submission/reports/`, `submission/calibration/`, `submission/results/`. Mục 4(b) và mục 6 là phần học viên tự điền.
 
 ## 1. Kết luận trước
-Pipeline kết luận **Hold** (mã thoát 10). Vào 224 ảnh, cửa vào loại 22 (8 trùng byte, 5 rò rỉ test, 4 trùng gần đúng, 3 quá nhỏ, 2 hỏng) nên còn **202 ảnh**; bản xuất `export/clean_v1` chỉ là **bản nháp**, chưa được phát hành.
-Lý do: không còn lỗi bắt buộc nào (0), nhưng sau 80 ảnh được người duyệt vẫn còn **38/202 ảnh (18,8%)** có cảnh báo chưa duyệt, vượt ngưỡng 10% (`07_error_list_v3`, `08_summary.json`).
+Pipeline kết luận **Hold** (mã thoát 10). Vào 224 ảnh, cửa vào loại 22 (8 trùng byte, 5 rò rỉ test, 4 trùng gần đúng, 3 quá nhỏ, 2 hỏng) nên còn **202 ảnh**
+- Lý do: không còn lỗi bắt buộc nào (0), nhưng sau 80 ảnh được người duyệt vẫn còn **38/202 ảnh (18,8%)** có cảnh báo chưa duyệt, vượt ngưỡng 10% (`07_error_list_v3`, `08_summary.json`).
 
 ## 2. Lỗi và phân việc
 Số liệu từ `02_error_list_v1` (lô raw 224 ảnh; mẫu số mỗi dòng là số ảnh bị ảnh hưởng / số dòng cờ).
@@ -48,7 +47,10 @@ Hiệu quả trên raw: tỉ lệ ảnh còn cảnh báo sau duyệt giảm từ
 ## 4. Cửa chặn và điều pipeline KHÔNG bắt được
 **(a) Gate chặn đúng.** Chạy `python -m pipeline.run --budget 0 --reports work/rep_nb --export-dir work/exp_nb` (không có người duyệt): vẫn còn **6 lỗi bắt buộc** (6 ảnh thiếu file nhãn nên `MISSING_LABEL_FILE`), kết luận **Rework**, mã thoát **20**, log ghi "KHÔNG xuất: còn lỗi bắt buộc" và thư mục `work/exp_nb` không được tạo, tức không xuất dataset. Khi có người duyệt (80 ảnh, `reviewed`), lỗi bắt buộc về 0 và gate chuyển sang Hold.
 
-TODO(học viên): (b) ≥ 2 điểm mù có bằng chứng (box lỏng nhẹ, nhầm lớp mà model lớn cũng nhầm, ảnh trùng biến đổi mạnh, ca không có trong calib như đã nêu ở `docs/CALIBRATION.md`…).
+**(b) Điểm mù đã biết** (bằng chứng từ `data/calib`, đo bằng chính các check của pipeline):
+1. **Ảnh trùng bị biến đổi mạnh.** Trong 6 ảnh trùng gần đúng của calib, 2 ảnh ở mức biến đổi 3 và 4 có khoảng cách phash **16** (calib_037 so với calib_015) và **18** (calib_038 so với calib_024), vượt `phash_dist = 12` nên không bị bắt (DUP_IMAGE_NEAR recall 0,67 ở ngưỡng đã chọn). Không thể nâng ngưỡng để bắt chúng: ở 16 trên raw số cờ LEAK_TEST nhảy từ 5 lên 11 và 4 cặp mới đều là ảnh khác nhau (mục 3). Ảnh trùng kiểu này lọt vào dataset; chỉ có thể bắt bằng cách khác (đặc trưng học sâu, so sánh vùng cắt).
+2. **Box phình to không bị bắt ổn định.** Calib chèn 5 box phình 1,45 đến 1,58 lần; `second_opinion` chỉ gắn đúng mã `POSSIBLE_LOOSE_BOX` cho **1/5** (recall 0,20, `calibration_report.md`). Ba ca bị gắn mã khác (calib_002: MISSING và FALSE_POS; calib_006 và calib_012: FALSE_POS) nên vẫn lên hàng đợi người xem, nhưng calib_024 **không bị cờ nào**. Nguyên nhân đo được: dự đoán của model khớp với box đó chỉ có conf 0,37 và 0,19, thấp hơn `conf = 0,6` nên bị bỏ qua; ở calib_006 model **không có dự đoán nào**. Tức là check này chỉ nhìn được những vật mà model lớn tự tin thấy, vật nhỏ hay bị che thì cả nhãn sai lẫn model yếu đều im lặng.
+3. **Nhãn và model cùng sai.** `second_opinion` chỉ cảnh báo khi nhãn và yolo26l **bất đồng**. Nếu cả hai cùng nhầm (ví dụ cùng gọi một xe tải là car) thì không có cờ nào. Đây là giới hạn của thiết kế chứ chưa đo được trên dữ liệu này vì không có đáp án cho raw.
 
 ## 5. Train: raw vs clean (tùy chọn, chấm riêng)
 Model `yolo26n.pt`, 20 epoch, batch 16, imgsz 640, seed 0 và 1, cùng val (`gold_val` 40 ảnh) và cùng test (100 ảnh), GPU RTX 4060 (`submission/results/comparison.md`).
@@ -58,9 +60,10 @@ Model `yolo26n.pt`, 20 epoch, batch 16, imgsz 640, seed 0 và 1, cùng val (`gol
 | raw | 224 | 2 | 0,725 ± 0,004 | 0,526 ± 0,010 | 0,747 ± 0,068 | 0,628 ± 0,016 |
 | clean | 202 | 2 | 0,740 ± 0,008 | 0,512 ± 0,002 | 0,770 ± 0,040 | 0,650 ± 0,032 |
 
-Từng seed (mAP50): raw 0,728 / 0,723; clean 0,735 / 0,745. Chênh mAP50 (clean − raw) = **+0,015**, tức khoảng 2 đến 4 lần độ lệch chuẩn giữa các seed (0,004 và 0,008), nhưng chỉ có 2 seed nên ước lượng nhiễu kém tin cậy. Mặt khác mAP50-95 của clean **thấp hơn** 0,014 và precision có độ lệch lớn. **Kết luận trung thực: chưa đủ bằng chứng để nói clean tốt hơn raw**; chênh nhỏ, tín hiệu lẫn lộn giữa hai chỉ số, test chỉ 100 ảnh.
+Từng seed (mAP50): raw 0,728 / 0,723; clean 0,735 / 0,745. Chênh mAP50 (clean − raw) = **+0,015**, tức khoảng 2 đến 4 lần độ lệch chuẩn giữa các seed (0,004 và 0,008), nhưng chỉ có 2 seed nên ước lượng nhiễu kém tin cậy. Mặt khác mAP50-95 của clean **thấp hơn** 0,014 và precision có độ lệch lớn. 
+  - **Kết luận trung thực: chưa đủ bằng chứng để nói clean tốt hơn raw**; chênh nhỏ, tín hiệu lẫn lộn giữa hai chỉ số, test chỉ 100 ảnh.
 
-Giả thuyết giải thích và cách kiểm (chưa kiểm):
+Giả thuyết giải thích và cách kiểm:
 1. Rò rỉ test trong raw (5 ảnh trùng test) có thể làm raw đo cao hơn thực tế, che khoảng cách thật. Kiểm: loại riêng 5 ảnh đó khỏi raw, train lại rồi so.
 2. Clean vẫn còn nhãn máy: 38 ảnh còn cảnh báo, và lỗi ngữ nghĩa (thiếu box, box lỏng) phần lớn chưa được sửa, nên cải thiện bị giới hạn. Kiểm: so thêm biến thể `oracle` (nhãn người) bằng `train_compare.py --variants oracle`.
 3. Số ảnh mỗi lớp ít, nhất là `truck` và `bus`, làm AP theo lớp dao động mạnh giữa các seed. Kiểm: xem `ap50_per_class` trong các file `*_seed*.json` và chạy thêm seed (ví dụ 5 seed).
