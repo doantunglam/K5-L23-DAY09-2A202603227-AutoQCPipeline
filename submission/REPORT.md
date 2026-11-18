@@ -71,7 +71,7 @@ Giả thuyết giải thích và cách kiểm:
 Bước tiếp theo: tăng số seed lên ít nhất 5 và thêm biến thể `oracle` trước khi kết luận.
 
 ## 6. Quyết định và ghi chú AI
-**(a) Quyết định cuối: Hold** (không Release). Dataset `clean_v1` chưa được phát hành, chỉ dùng như bản nháp để thử nghiệm. Căn cứ: lỗi bắt buộc đã về 0 nhưng 38/202 ảnh (18,8%) còn cảnh báo chưa duyệt, trên ngưỡng 10%; hàng đợi có 125 ảnh mà ngân sách duyệt chỉ 80, nên 45 ảnh không ai xem; và việc trainning (mục 5) chưa cho thấy clean tốt hơn raw một cách đáng tin.
+**(a) Quyết định cuối: Hold** (không Release). Dataset `clean_v1` chưa được phát hành, chỉ dùng như bản nháp để thử nghiệm. Căn cứ: lỗi bắt buộc đã về 0 nhưng 38/202 ảnh (18,8%) còn cảnh báo chưa duyệt, trên ngưỡng 10%; hàng đợi có 125 ảnh mà ngân sách duyệt chỉ 80, nên 45 ảnh không ai xem; và việc training (mục 5) chưa cho thấy clean tốt hơn raw một cách đáng tin.
 **Điều kiện để thành Release:** cần đưa số ảnh còn cảnh báo xuống dưới 10%, tức tối đa 20/202 ảnh, nghĩa là phải xử lý thêm ít nhất 18 trong 38 ảnh còn cờ. Cách làm: 
 - (1) người duyệt thêm lượt thứ hai cho phần hàng đợi chưa xem, ưu tiên các ảnh còn `POSSIBLE_MISSING` và `POSSIBLE_WRONG_CLASS`;
 - (2) chạy lại `make run` và `make check`, xác nhận `07_error_list_v3` vẫn không còn lỗi bắt buộc;
