@@ -40,5 +40,49 @@ from ..model_cache import get_preds  # noqa: F401
 
 
 def run(ds, cfg, preds=None):
-    # TODO
-    raise NotImplementedError("check second_opinion chưa làm")
+    c = cfg["second_opinion"]
+    if preds is None:
+        preds = get_preds(ds, cfg, "checker")
+    issues = []
+    for p in ds.image_files():
+        stem = p.stem
+        rows = ds.read_label_lines(stem)
+        size = ds.image_size(stem)
+        if stem not in preds or rows is None or size is None:
+            continue                                         # không có ý kiến thứ hai / không có nhãn / ảnh hỏng
+        W, H = size
+        labels = ds.valid_boxes(stem)
+        stem_preds = preds[stem]
+
+        # Model thấy vật mà nhãn bỏ sót / sai lớp / box lỏng
+        for cls, conf, *box in stem_preds:
+            if conf < c["conf"] or box[2] * W * box[3] * H < c["min_area_px"]:
+                continue
+            cands = [(iou_xywh(box, lb[1:]), lb[0]) for lb in labels]
+            cands = [(iou, lc) for iou, lc in cands if iou >= c["iou_missing"]]
+            if not cands:
+                issues.append(Issue("second_opinion", WARN, "POSSIBLE_MISSING", stem, f"model thấy lớp {cls} (conf {conf:.2f}) mà nhãn không có box", extra={"conf": conf, "class": cls}))
+                continue
+            same = max((iou for iou, lc in cands if lc == cls), default=None)
+            if same is not None:
+                if same < c["iou_loose"]:
+                    issues.append(Issue("second_opinion", WARN, "POSSIBLE_LOOSE_BOX", stem, f"box lớp {cls} khớp lỏng với model (IoU {same:.2f})", extra={"conf": conf, "iou": round(same, 3)}))
+                continue                                     # nhãn đúng lớp đã phủ vật này
+            other = max(iou for iou, _ in cands)
+            if other >= c["iou_match"]:
+                issues.append(Issue("second_opinion", WARN, "POSSIBLE_WRONG_CLASS", stem, f"model cho là lớp {cls} (conf {conf:.2f}), nhãn gán lớp khác (IoU {other:.2f})", extra={"conf": conf, "iou": round(other, 3), "class": cls}))
+            # IoU trong [iou_missing, iou_match) với lớp khác: mơ hồ, không cờ
+
+        # Box nhãn không khớp vật nào model thấy (dùng fp_conf, không lọc diện tích)
+        fp_preds = [r[2:6] for r in stem_preds if r[1] >= c["fp_conf"]]
+        for ln_no, text in rows:
+            try:
+                lb = parse_yolo_line(text)
+            except ValueError:
+                continue
+            if not 0 <= lb[0] < len(ds.classes):
+                continue
+            best = max((iou_xywh(lb[1:], b) for b in fp_preds), default=0.0)
+            if best < c["iou_missing"]:
+                issues.append(Issue("second_opinion", WARN, "POSSIBLE_FALSE_POS", stem, "box nhãn không khớp vật nào model thấy", line=ln_no, extra={"iou": round(best, 3)}))
+    return issues
