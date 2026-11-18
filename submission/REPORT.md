@@ -71,12 +71,15 @@ Giả thuyết giải thích và cách kiểm:
 Bước tiếp theo: tăng số seed lên ít nhất 5 và thêm biến thể `oracle` trước khi kết luận.
 
 ## 6. Quyết định và ghi chú AI
-**(a) Quyết định cuối: Hold** (không Release). Dataset `clean_v1` chưa được phát hành, chỉ dùng như bản nháp để thử nghiệm. Căn cứ: lỗi bắt buộc đã về 0 nhưng 38/202 ảnh (18,8%) còn cảnh báo chưa duyệt, trên ngưỡng 10%; hàng đợi có 125 ảnh mà ngân sách duyệt chỉ 80, nên 45 ảnh không ai xem; và thí nghiệm train (mục 5) chưa cho thấy clean tốt hơn raw một cách đáng tin.
-**Điều kiện để thành Release:** cần đưa số ảnh còn cảnh báo xuống dưới 10%, tức tối đa 20/202 ảnh, nghĩa là phải xử lý thêm ít nhất 18 trong 38 ảnh còn cờ. Cách làm: (1) người duyệt thêm lượt thứ hai cho phần hàng đợi chưa xem, ưu tiên các ảnh còn `POSSIBLE_MISSING` và `POSSIBLE_WRONG_CLASS`; (2) chạy lại `make run` và `make check`, xác nhận `07_error_list_v3` vẫn không còn lỗi bắt buộc; (3) khi đó kiểm lại mục 5 với nhiều seed hơn và biến thể `oracle` trước khi công bố "clean tốt hơn". Không hạ `second_opinion.conf` chỉ để hàng đợi "vừa" vì sẽ thành Release giả.
+**(a) Quyết định cuối: Hold** (không Release). Dataset `clean_v1` chưa được phát hành, chỉ dùng như bản nháp để thử nghiệm. Căn cứ: lỗi bắt buộc đã về 0 nhưng 38/202 ảnh (18,8%) còn cảnh báo chưa duyệt, trên ngưỡng 10%; hàng đợi có 125 ảnh mà ngân sách duyệt chỉ 80, nên 45 ảnh không ai xem; và việc trainning (mục 5) chưa cho thấy clean tốt hơn raw một cách đáng tin.
+**Điều kiện để thành Release:** cần đưa số ảnh còn cảnh báo xuống dưới 10%, tức tối đa 20/202 ảnh, nghĩa là phải xử lý thêm ít nhất 18 trong 38 ảnh còn cờ. Cách làm: 
+- (1) người duyệt thêm lượt thứ hai cho phần hàng đợi chưa xem, ưu tiên các ảnh còn `POSSIBLE_MISSING` và `POSSIBLE_WRONG_CLASS`;
+- (2) chạy lại `make run` và `make check`, xác nhận `07_error_list_v3` vẫn không còn lỗi bắt buộc;
+- (3) khi đó kiểm lại mục 5 với nhiều seed hơn và biến thể `oracle` trước khi công bố "clean tốt hơn". Không hạ `second_opinion.conf` chỉ để hàng đợi "vừa" vì sẽ thành Release giả.
 
 **(b) Ghi chú dùng AI.** Có dùng AI (Claude Code) để viết bốn module `label_format`, `gate`, `autofix`, `second_opinion` và để soạn các mục 1, 2, 3, 4, 5 của báo cáo từ số liệu do script sinh ra.
 - **Prompt chính:** yêu cầu thực hiện Bước 2 của lab; AI đọc docstring và test của từng module rồi viết code, không dán ảnh hay dữ liệu riêng tư lên dịch vụ ngoài.
 - **Cách kiểm:** chạy test từng module rồi toàn bộ (`python -m pytest -q`: 79 passed); chạy `python -m pipeline.run` hai lần cho kết quả giống hệt nhau; chạy với `--budget 0` để xem gate chặn đúng; mở xem tay các cặp ảnh bị gắn trùng khi calibrate; đối chiếu số trong báo cáo với `08_summary.json`, `calibration_report.md`, `comparison.md`.
-- **Một lần AI sai:** khi ghi `autofix.py`, chuỗi xuống dòng `"\n"` bị biến thành một dấu xuống dòng thật trong file, gây `SyntaxError` ở dòng 107; phát hiện khi chạy test, sửa lại đúng và test xanh. Một chỗ khác AI suýt sai: bảng calib cho thấy `phash_dist = 16` tốt nhất nhưng trên raw nó gắn nhầm ảnh khác nhau, nên phải mở xem ảnh thật mới quyết định chọn 12.
+- **Một lần AI sai:** khi ghi `autofix.py`, chuỗi xuống dòng `"\n"` bị biến thành một dấu xuống dòng thật trong file, gây `SyntaxError` ở dòng 107; phát hiện khi chạy test, sửa lại đúng và test xanh.
 
 *(Thưởng +2, tùy chọn)* CVAT: lọc `width < 20`, ảnh/số box khớp, đối chiếu `BOX_TINY` (xem docs/CVAT_FILTER.md), 1 câu về `can_review`.

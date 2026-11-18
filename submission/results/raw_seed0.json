@@ -19,5 +19,5 @@
   "batch": 16,
   "imgsz": 640,
   "train_images": 224,
-  "seconds": 118.8
+  "seconds": 120.5
 }
